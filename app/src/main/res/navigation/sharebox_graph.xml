@@ -1,0 +1,24 @@
+<navigation xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/sharebox_graph" app:startDestination="@id/splash">
+    <fragment android:id="@+id/splash" android:name="com.example.sharebox.ui.AuthPages$Splash" android:label="splash"/>
+    <fragment android:id="@+id/onboarding" android:name="com.example.sharebox.ui.AuthPages$Onboarding" android:label="onboarding"/>
+    <fragment android:id="@+id/auth" android:name="com.example.sharebox.ui.AuthPages$Auth" android:label="auth"/>
+    <fragment android:id="@+id/home" android:name="com.example.sharebox.ui.CatalogPages$Home" android:label="home"/>
+    <fragment android:id="@+id/explore" android:name="com.example.sharebox.ui.CatalogPages$Explore" android:label="explore"/>
+    <fragment android:id="@+id/product" android:name="com.example.sharebox.ui.CatalogPages$Detail" android:label="product"/>
+    <fragment android:id="@+id/chats" android:name="com.example.sharebox.ui.ChatPages$Inbox" android:label="chats"/>
+    <fragment android:id="@+id/chat" android:name="com.example.sharebox.ui.ChatPages$Chat" android:label="chat"/>
+    <fragment android:id="@+id/ai_chat" android:name="com.example.sharebox.ui.ChatPages$Assistant" android:label="ai_chat"/>
+    <fragment android:id="@+id/tx_request" android:name="com.example.sharebox.ui.TransactionPages$Request" android:label="tx_request"/>
+    <fragment android:id="@+id/transactions" android:name="com.example.sharebox.ui.TransactionPages$ListPage" android:label="transactions"/>
+    <fragment android:id="@+id/tx_detail" android:name="com.example.sharebox.ui.TransactionPages$Detail" android:label="tx_detail"/>
+    <fragment android:id="@+id/payment" android:name="com.example.sharebox.ui.TransactionPages$Payment" android:label="payment"/>
+    <fragment android:id="@+id/finance" android:name="com.example.sharebox.ui.ProfilePages$Finance" android:label="finance"/>
+    <fragment android:id="@+id/notifications" android:name="com.example.sharebox.ui.ProfilePages$Notices" android:label="notifications"/>
+    <fragment android:id="@+id/wishlist" android:name="com.example.sharebox.ui.CatalogPages$Wishlist" android:label="wishlist"/>
+    <fragment android:id="@+id/profile" android:name="com.example.sharebox.ui.ProfilePages$ProfilePage" android:label="profile"/>
+    <fragment android:id="@+id/edit_profile" android:name="com.example.sharebox.ui.ProfilePages$Edit" android:label="edit_profile"/>
+    <fragment android:id="@+id/my_products" android:name="com.example.sharebox.ui.ProfilePages$Listings" android:label="my_products"/>
+    <fragment android:id="@+id/create_product" android:name="com.example.sharebox.ui.ProfilePages$Create" android:label="create_product"/>
+    <fragment android:id="@+id/settings" android:name="com.example.sharebox.ui.ProfilePages$Settings" android:label="settings"/>
+    <fragment android:id="@+id/states" android:name="com.example.sharebox.ui.CatalogPages$States" android:label="states"/>
+</navigation>

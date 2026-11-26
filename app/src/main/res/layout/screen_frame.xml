@@ -1,0 +1,11 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/screen_frame" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@color/sb_canvas">
+  <LinearLayout android:id="@+id/header" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:background="@color/sb_paper" android:elevation="3dp" android:minHeight="68dp" android:paddingHorizontal="12dp" android:visibility="gone"/>
+  <LinearLayout android:id="@+id/above" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+  <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+    <androidx.core.widget.NestedScrollView android:id="@+id/scroll" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="false" android:clipToPadding="false">
+      <LinearLayout android:id="@+id/content" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="@dimen/sb_page" android:paddingTop="10dp" android:paddingBottom="20dp"/>
+    </androidx.core.widget.NestedScrollView>
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/items" android:layout_width="match_parent" android:layout_height="match_parent" android:paddingHorizontal="@dimen/sb_page" android:clipToPadding="false" android:visibility="gone"/>
+  </FrameLayout>
+  <LinearLayout android:id="@+id/footer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="@color/sb_paper" android:elevation="3dp"/>
+</LinearLayout>

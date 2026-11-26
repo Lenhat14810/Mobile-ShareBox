@@ -1,0 +1,18 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:paddingHorizontal="12dp" android:gravity="center">
+    <TextView android:layout_width="78dp" android:layout_height="78dp" android:gravity="center" android:text="!"
+        android:textStyle="bold" android:textSize="29sp" android:textColor="@color/sb_error" android:background="@drawable/sb_error_circle"
+        android:importantForAccessibility="no"/>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center"
+        android:layout_marginTop="18dp" android:text="@string/sb_network_title" android:textColor="@color/sb_ink"
+        android:textSize="18sp" android:textStyle="bold"/>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center"
+        android:layout_marginTop="10dp" android:text="@string/sb_network_hint" android:textColor="@color/sb_muted"
+        android:textSize="14sp"/>
+    <TextView android:id="@+id/retry" android:layout_width="match_parent" android:layout_height="48dp"
+        android:layout_marginTop="15dp" android:gravity="center" android:text="@string/sb_retry" android:textColor="#FFFFFF"
+        android:textStyle="bold" android:textSize="14sp" android:background="@drawable/sb_blue"/>
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="15dp" android:text="@string/sb_network_code" android:textColor="@color/sb_error" android:textSize="12sp"/>
+</LinearLayout>

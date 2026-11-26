@@ -1,0 +1,15 @@
+<resources>
+  <style name="Theme.Sharebox" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <item name="colorAccent">@color/sb_accent</item>
+    <item name="android:windowBackground">@color/sb_canvas</item>
+    <item name="android:statusBarColor">@color/sb_canvas</item>
+    <item name="android:navigationBarColor">@color/sb_paper</item>
+    <item name="android:fontFamily">sans</item>
+    <item name="android:windowLightStatusBar">true</item>
+    <item name="android:windowLightNavigationBar">true</item>
+  </style>
+  <style name="SbText">
+    <item name="android:textColor">@color/sb_ink</item>
+    <item name="android:textSize">14sp</item>
+  </style>
+</resources>

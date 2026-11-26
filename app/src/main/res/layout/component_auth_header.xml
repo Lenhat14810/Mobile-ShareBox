@@ -1,0 +1,17 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:minHeight="172dp" android:paddingStart="24dp" android:paddingEnd="20dp" android:paddingTop="20dp"
+    android:paddingBottom="20dp" android:gravity="bottom" android:background="@drawable/sb_auth_background">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+        <ImageView android:layout_width="35dp" android:layout_height="35dp" android:padding="7dp"
+            android:background="@drawable/sb_white" android:src="@drawable/ic_sharebox_mark" android:tint="@color/sb_blue"
+            android:contentDescription="@string/app_name"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="9dp"
+            android:text="@string/app_name" android:textColor="#FFFFFF" android:textSize="19sp" android:textStyle="bold"/>
+    </LinearLayout>
+    <Space android:layout_width="1dp" android:layout_height="28dp" />
+    <TextView android:id="@+id/auth_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#FFFFFF" android:textSize="25sp" android:textStyle="bold"/>
+    <TextView android:id="@+id/auth_subtitle" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="6dp" android:textColor="#E6EEFF" android:textSize="13sp"/>
+</LinearLayout>

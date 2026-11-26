@@ -1,0 +1,18 @@
+<resources>
+    <string name="sb_add_photo">Thêm ảnh</string>
+    <string name="sb_add_qr">Thêm mã QR</string>
+    <string name="sb_message_hint">Nhập tin nhắn…</string>
+    <string name="sb_assistant_message_hint">Hỏi ShareBox AI…</string>
+    <string name="sb_send">Gửi</string>
+    <string name="sb_password_hint">Tối thiểu 6 ký tự</string>
+    <string name="sb_show_password">Hiện mật khẩu</string>
+    <string name="sb_hide_password">Ẩn mật khẩu</string>
+    <string name="sb_network_title">Không thể kết nối</string>
+    <string name="sb_network_hint">Vui lòng kiểm tra kết nối mạng của bạn và thử lại.</string>
+    <string name="sb_network_code">Mã lỗi: NETWORK_TIMEOUT</string>
+    <string name="sb_retry">Thử lại</string>
+    <string name="sb_home">Trang chủ</string>
+    <string name="sb_explore">Khám phá</string>
+    <string name="sb_chat">Tin nhắn</string>
+    <string name="sb_profile">Cá nhân</string>
+</resources>

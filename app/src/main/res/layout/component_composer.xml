@@ -1,0 +1,18 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:gravity="center_vertical" android:paddingHorizontal="8dp" android:paddingVertical="6dp">
+    <ImageButton android:id="@+id/pick_image" android:layout_width="48dp" android:layout_height="48dp"
+        android:src="@drawable/sb_ic_image" android:tint="@color/sb_ink" android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/sb_add_photo"/>
+    <ImageButton android:id="@+id/pick_qr" android:layout_width="48dp" android:layout_height="48dp"
+        android:src="@drawable/sb_ic_qr" android:tint="@color/sb_ink" android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/sb_add_qr"/>
+    <androidx.appcompat.widget.AppCompatEditText android:id="@+id/message_input" android:layout_width="0dp"
+        android:layout_height="wrap_content" android:layout_weight="1" android:minHeight="48dp" android:singleLine="true"
+        android:imeOptions="actionSend" android:inputType="textCapSentences" android:background="@drawable/sb_tint"
+        android:paddingHorizontal="12dp" android:textSize="14sp" android:textColor="@color/sb_ink"
+        android:textColorHint="@color/sb_muted" android:hint="@string/sb_message_hint"/>
+    <ImageButton android:id="@+id/send_message" android:layout_width="48dp" android:layout_height="48dp" android:layout_marginStart="5dp"
+        android:src="@drawable/sb_ic_send" android:tint="#FFFFFF" android:background="@drawable/sb_fab"
+        android:contentDescription="@string/sb_send"/>
+</LinearLayout>
