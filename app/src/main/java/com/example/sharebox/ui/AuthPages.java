@@ -7,7 +7,6 @@ import android.text.method.HideReturnsTransformationMethod;
 import android.text.method.PasswordTransformationMethod;
 import android.util.Patterns;
 import android.view.Gravity;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.*;
 import com.example.sharebox.R;
@@ -20,87 +19,33 @@ public final class AuthPages {
     public static final class Splash extends Page {
         private final Handler timer=new Handler(Looper.getMainLooper());
         private int value;
-        private boolean moved;
+        private final Runnable progress=new Runnable(){
+            @Override public void run(){
+                value=Math.min(100,value+(value<65?8:4));
+                updateProgress();
+                if(value<100)timer.postDelayed(this,80);
+                else timer.postDelayed(finish,300);
+            }
+        };
+        private final Runnable finish=()->host.reset(R.id.auth);
         public Splash(){super(R.layout.screen_splash);}
-        @Override protected void render(){
-            View root=requireView().findViewById(R.id.splash_content);
-            ProgressBar bar=root.findViewById(R.id.splash_progress);
-            TextView hint=root.findViewById(R.id.splash_hint);
-            root.setOnClickListener(v->next());
-            timer.post(new Runnable(){
-                @Override public void run(){
-                    if(frame==null||moved)return;
-                    value=Math.min(100,value+(value<65?8:4));
-                    bar.setProgress(value);
-                    hint.setText(value+"%  ·  Đang tải\nChạm để tiếp tục");
-                    if(value<100)timer.postDelayed(this,80); else timer.postDelayed(()->next(),300);
-                }
-            });
+        @Override protected void render(){updateProgress();}
+        private void updateProgress(){
+            ProgressBar bar=requireView().findViewById(R.id.splash_progress);
+            TextView hint=requireView().findViewById(R.id.splash_hint);
+            bar.setProgress(value);
+            hint.setText(getString(R.string.sb_loading_progress,value));
         }
-        private void next(){if(frame!=null&&!moved){moved=true;host.reset(R.id.onboarding);}}
-        @Override public void onDestroyView(){timer.removeCallbacksAndMessages(null);super.onDestroyView();}
-    }
-
-    public static final class Onboarding extends Page {
-        private static final String[] HEAD={"Khám phá đồ dùng","Kết nối dễ dàng","Chia sẻ thông minh"};
-        private static final String[] BODY={"Tìm kiếm hàng nghìn món đồ có thể thuê hoặc mượn ngay gần bạn.",
-                "Trò chuyện với chủ đồ và thống nhất thời gian, phí thuê và tiền cọc.",
-                "Cho thuê hoặc cho mượn đồ ít dùng và giúp cộng đồng tiết kiệm."};
-        public Onboarding(){super(R.layout.screen_onboarding);}
-        @Override protected void render(){
-            int index=memory.getInt("page");
-            frame.header.setVisibility(View.VISIBLE);
-            ImageView mark=new ImageView(requireContext());mark.setImageResource(R.drawable.ic_sharebox_mark);
-            mark.setBackgroundResource(R.drawable.sb_blue);mark.setPadding(dp(6),dp(6),dp(6),dp(6));
-            frame.header.addView(mark,new LinearLayout.LayoutParams(dp(35),dp(35)));
-            TextView brand=title("ShareBox");brand.setPadding(dp(9),0,0,0);weight(frame.header,brand);
-            frame.header.addView(button("Bỏ qua",false,()->open(R.id.auth)));
-            FrameLayout illustration=new FrameLayout(requireContext());
-            if(index==0){
-                ImageView art=new ImageView(requireContext());art.setImageResource(R.drawable.welcome_art);art.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                illustration.addView(art,new FrameLayout.LayoutParams(-1,-1));
-            } else {
-                LinearLayout sample=panel();sample.setBackgroundResource(index==1?R.drawable.sb_tint:R.drawable.sb_gradient);
-                if(index==1){
-                    note(sample,"Chào bạn, máy ảnh Canon còn trống nhé!",R.color.sb_ink);
-                    TextView reply=body("Mình muốn thuê trong ba ngày.");
-                    reply.setBackgroundResource(R.drawable.sb_blue);reply.setTextColor(WHITE);
-                    reply.setPadding(dp(10),dp(10),dp(10),dp(10));add(sample,reply,10);
-                    note(sample,"Bạn có thể nhận máy vào ngày 8/12.",R.color.sb_ink);
-                } else {
-                    for(String line:new String[]{"Tiết kiệm tháng này","1.250.000đ","12 món được mượn   ★ 4,9"}){
-                        TextView text=title(line);text.setTextColor(WHITE);add(sample,text,12);
-                    }
-                }
-                FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(-1,-2,Gravity.CENTER);lp.setMargins(dp(26),0,dp(26),0);
-                illustration.addView(sample,lp);
-            }
-            illustration.setOnTouchListener(new View.OnTouchListener() {
-                float start;
-                @Override public boolean onTouch(View v,MotionEvent event){
-                    if(event.getActionMasked()==MotionEvent.ACTION_DOWN){start=event.getX();return true;}
-                    if(event.getActionMasked()==MotionEvent.ACTION_UP){
-                        float dx=event.getX()-start;
-                        if(Math.abs(dx)>dp(44))select(Math.max(0,Math.min(2,index+(dx<0?1:-1))));
-                        return true;
-                    }
-                    return true;
-                }
-            });
-            int height=Math.max(230,Math.min(460,getResources().getConfiguration().screenHeightDp-370));
-            frame.content.addView(illustration,new LinearLayout.LayoutParams(-1,dp(height)));
-            TextView heading=text(HEAD[index],25,R.color.sb_ink,true);heading.setGravity(Gravity.CENTER);add(frame.content,heading,14);
-            TextView desc=meta(BODY[index]);desc.setGravity(Gravity.CENTER);add(frame.content,desc,8);
-            LinearLayout dots=row();dots.setGravity(Gravity.CENTER);
-            for(int i=0;i<3;i++){
-                int page=i;TextView d=button(i==index?"━":"•",false,()->select(page));d.setTextColor(color(i==index?R.color.sb_accent:R.color.sb_muted));
-                d.setContentDescription("Trang "+(i+1));dots.addView(d);
-            }
-            add(frame.content,dots,14);
-            add(frame.content,button(index==2?"Bắt đầu ngay":"Tiếp tục   ›",true,()->{if(index==2)open(R.id.auth);else select(index+1);}),8);
-            add(frame.content,button("Đăng nhập",false,()->open(R.id.auth)),8);
+        @Override public void onResume(){
+            super.onResume();
+            // The demo repository initializes synchronously when the Activity creates its ViewModel.
+            if(value<100)timer.post(progress);
+            else timer.postDelayed(finish,300);
         }
-        void select(int page){memory.putInt("page",page);refresh();}
+        @Override public void onPause(){
+            timer.removeCallbacksAndMessages(null);
+            super.onPause();
+        }
     }
 
     public static final class Auth extends Page {
@@ -154,7 +99,8 @@ public final class AuthPages {
                     if(frame!=null&&isAdded())host.reset(R.id.home);
                 });
             });
-            add(frame.content,submit,14);add(frame.content,feedback,10);
+            add(frame.content,submit,14);
+            if(!registration)add(frame.content,feedback,10);
             if(mode==0){
                 TextView or=meta("────────       hoặc       ────────");or.setGravity(Gravity.CENTER);add(frame.content,or,10);
                 add(frame.content,button("G   Tiếp tục với Google",false,()->{
@@ -164,7 +110,8 @@ public final class AuthPages {
                 }),12);
             }
             add(frame.content,link(mode==0?"Chưa có tài khoản? Đăng ký":"Đã có tài khoản? Đăng nhập",Gravity.CENTER,
-                    ()->mode(mode==0?1:0)),14);
+                    ()->mode(mode==0?1:0)),registration?0:14);
+            if(registration)add(frame.content,feedback,0);
         }
         private TextView link(String label,int gravity,Runnable action){
             TextView link=text(label,14,R.color.sb_ink,true);
@@ -176,11 +123,13 @@ public final class AuthPages {
             form.passwordLabel.setText(title);
             form.passwordInput.setTypeface(android.graphics.Typeface.DEFAULT);
             EditText p=form.passwordInput;
-            final boolean[] shown={false};
             form.passwordVisibility.setOnClickListener(v->{
-                shown[0]=!shown[0];p.setTransformationMethod(shown[0]?HideReturnsTransformationMethod.getInstance():PasswordTransformationMethod.getInstance());
-                form.passwordVisibility.setContentDescription(getString(shown[0]?R.string.sb_hide_password:R.string.sb_show_password));
-                p.setSelection(p.length());
+                boolean show=p.getTransformationMethod() instanceof PasswordTransformationMethod;
+                int start=p.getSelectionStart(), end=p.getSelectionEnd();
+                p.setTransformationMethod(show?HideReturnsTransformationMethod.getInstance():PasswordTransformationMethod.getInstance());
+                form.passwordVisibility.setImageResource(show?R.drawable.sb_ic_eye_off:R.drawable.sb_ic_eye);
+                form.passwordVisibility.setContentDescription(getString(show?R.string.sb_hide_password:R.string.sb_show_password));
+                if(start>=0&&end>=0)p.setSelection(start,end);
             });
             add(frame.content,form.getRoot(),12);
             return p;

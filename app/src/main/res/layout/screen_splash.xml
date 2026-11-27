@@ -3,5 +3,5 @@
             <TextView android:id="@+id/splash_brand" style="@style/SbText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ShareBox" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="38sp" android:layout_marginTop="16dp"/>
             <TextView android:id="@+id/splash_tag" style="@style/SbText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Chia sẻ tiện ích – Kết nối cộng đồng" android:textColor="#FFFFFF" android:gravity="center"/>
             <ProgressBar android:id="@+id/splash_progress" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="8dp" android:layout_marginTop="72dp" android:max="100" android:progressTint="#FFFFFF"/>
-            <TextView android:id="@+id/splash_hint" style="@style/SbText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Chạm để tiếp tục" android:textColor="#FFFFFF" android:layout_marginTop="12dp"/>
+            <TextView android:id="@+id/splash_hint" style="@style/SbText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FFFFFF" android:layout_marginTop="12dp"/>
          </LinearLayout></FrameLayout>

@@ -35,7 +35,10 @@ public final class TransactionPages {
             TextView icon=text(checked?"✓":"◷",14,checked?R.color.sb_success:R.color.sb_muted,true);
             icon.setMinWidth(dp(22));row.addView(icon);
             weight(row,body(label));
-            row.addView(tag(checked?"Đã xác nhận":"Chờ xác nhận",checked?R.color.sb_success:R.color.sb_warning));
+            TextView confirmation=text(checked?"Đã xác nhận":"Chờ xác nhận",12,
+                    checked?R.color.sb_success:R.color.sb_warning,true);
+            confirmation.setPaddingRelative(dp(8),0,0,0);
+            row.addView(confirmation);
             add(group,row,7);
         }
         String actionLabel(Transaction t,Step step){
@@ -133,7 +136,7 @@ public final class TransactionPages {
                 labels[i]+=" "+state.transactions.stream().filter(t->matches(t,tab)).count();
             }
             frame.above.setPadding(dp(16),0,dp(16),dp(5));
-            chips(frame.above,labels,filter,i->{memory.putInt("filter",i);refresh();});
+            flatFilters(frame.above,labels,i->i==memory.getInt("filter"),i->{memory.putInt("filter",i);refresh();});
             List<Transaction> visible=state.transactions.stream().filter(t->matches(t,filter)).collect(Collectors.toList());
             if(visible.isEmpty())empty(frame.content,"◇","Chưa có giao dịch","Giao dịch sẽ xuất hiện tại đây.","",null);
             else pageList(visible,1,this::card);
@@ -146,8 +149,12 @@ public final class TransactionPages {
         }
         View card(Transaction t){
             LinearLayout card=panel();LinearLayout row=row();
-            weight(row,tag(t.myRole==Role.RENTER?"Bạn thuê":"Bạn cho thuê",t.myRole==Role.RENTER?R.color.sb_accent:R.color.sb_success));
-            row.addView(tag(t.label(),tone(t)));add(card,row,0);
+            weight(row,text(t.myRole==Role.RENTER?"Bạn thuê":"Bạn cho thuê",12,R.color.sb_muted,true));
+            TextView status=text(t.label(),13,tone(t),true);
+            status.setGravity(Gravity.END);
+            status.setPaddingRelative(dp(8),0,0,0);
+            weight(row,status);
+            add(card,row,0);
             Product p=state.product(t.productId);
             if(p!=null)add(card,productSummary(p,(t.myRole==Role.RENTER?"Chủ đồ: ":"Người yêu cầu: ")+t.contact),8);
             LinearLayout end=row();
@@ -166,7 +173,11 @@ public final class TransactionPages {
         @Override protected void render(){
             Transaction t=transaction();
             if(t==null){missing("Không tìm thấy giao dịch");return;}
-            header();frame.header.addView(tag(t.label(),tone(t)));
+            header();
+            TextView status=text(t.label(),12,tone(t),true);
+            status.setMaxWidth(dp(116));
+            status.setGravity(Gravity.END);
+            frame.header.addView(status);
             Product p=state.product(t.productId);
             LinearLayout card=panel();
             if(p!=null)add(card,productSummary(p,t.contact+" · "+date(t.start)+" – "+date(t.end())),0);

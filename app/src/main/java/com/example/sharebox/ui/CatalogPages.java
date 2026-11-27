@@ -1,22 +1,32 @@
 package com.example.sharebox.ui;
 
 import android.animation.ObjectAnimator;
+import android.content.res.ColorStateList;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.SpannableString;
 import android.text.Spanned;
+import android.text.TextUtils;
 import android.text.style.StyleSpan;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.*;
 import androidx.appcompat.app.AlertDialog;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import com.example.sharebox.R;
+import com.example.sharebox.data.ListingFilters.Condition;
+import com.example.sharebox.data.ListingFilters.Location;
+import com.example.sharebox.data.ListingFilters.PriceRange;
 import com.example.sharebox.databinding.ComponentSystemErrorBinding;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
+import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 import static com.example.sharebox.data.Models.*;
 
@@ -24,8 +34,6 @@ public final class CatalogPages {
     private CatalogPages(){}
     private static final String[] CATEGORY={"Tất cả","Điện tử","Laptop","Đồ gia dụng","Thể thao","Dụng cụ","Điện thoại","Sách","Nội thất","Khác"};
     private static final String[] ORDER={"Mới nhất","Giá tăng dần","Giá giảm dần"};
-    private static final Set<String> DISTRICTS=new HashSet<>(Arrays.asList("thu duc","binh thanh","go vap","tan binh","tan phu","binh tan","phu nhuan",
-            "binh chanh","hoc mon","nha be","cu chi","can gio"));
     static List<Product> available(State state,String query){
         String needle=search(query);
         return state.products.stream().filter(p->p.status==Status.ACTIVE &&
@@ -36,32 +44,75 @@ public final class CatalogPages {
         public Home(){super(R.layout.screen_home);}
         @Override protected void render(){
             frame.header.setVisibility(View.VISIBLE);
+            ConstraintLayout identity=new ConstraintLayout(requireContext());
+            frame.header.addView(identity,new LinearLayout.LayoutParams(-1,-2));
             View avatar=avatar(initials(state.profile.name));
             if(state.profile.photo!=null){
-                ImageView pic=image(Art.CAMERA,state.profile.photo,false);
-                pic.setPadding(0,0,0,0);pic.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                pic.setBackground(shape(color(R.color.sb_tint),40));pic.setClipToOutline(true);
-                pic.setLayoutParams(new LinearLayout.LayoutParams(dp(48),dp(48)));avatar=pic;
-            }
-            click(avatar,R.drawable.sb_tint,()->host.openTab(R.id.profile));frame.header.addView(avatar);
-            LinearLayout info=col();info.setPadding(dp(8),0,dp(4),0);
-            String[] parts=state.profile.name.trim().split("\\s+");
-            String name=parts.length>1?parts[parts.length-2]+" "+parts[parts.length-1]:parts[0];
-            add(info,text(name,17,R.color.sb_ink,true),0);
-            TextView finance=text("▣  Tài chính  ›",12,R.color.sb_accent,true);
-            finance.setPadding(dp(9),dp(6),dp(9),dp(6));finance.setMinHeight(dp(34));
-            click(finance,R.drawable.sb_tint,()->open(R.id.finance));add(info,finance,3);weight(frame.header,info);
-            TextView ai=button("✧",false,()->open(R.id.ai_chat));ai.setContentDescription("ShareBox AI");frame.header.addView(ai);
-            frame.header.addView(icon(R.drawable.sb_ic_moon,state.dark?"Chế độ sáng":"Chế độ tối",()->host.dark(!state.dark)));
+                ImageView photo=image(Art.CAMERA,state.profile.photo,false);
+                photo.setPadding(0,0,0,0);
+                photo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                avatar=photo;
+            }else ((TextView)avatar).setTextSize(20);
+            avatar.setId(View.generateViewId());
+            click(avatar,0,()->host.openTab(R.id.profile));
+            GradientDrawable circle=new GradientDrawable();
+            circle.setShape(GradientDrawable.OVAL);
+            circle.setColor(color(R.color.sb_tint));
+            avatar.setBackground(new RippleDrawable(ColorStateList.valueOf(0x24265de6),circle,null));
+            avatar.setClipToOutline(true);
+            ConstraintLayout.LayoutParams avatarSize=new ConstraintLayout.LayoutParams(dp(64),dp(64));
+            avatarSize.startToStart=ConstraintLayout.LayoutParams.PARENT_ID;
+            avatarSize.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
+            avatarSize.topMargin=dp(4);
+            identity.addView(avatar,avatarSize);
+
+            ImageButton theme=headerIcon(state.dark?R.drawable.sb_ic_sun:R.drawable.sb_ic_moon,
+                    state.dark?"Chế độ sáng":"Chế độ tối",()->host.dark(!state.dark));
+            theme.setId(View.generateViewId());
             FrameLayout notification=new FrameLayout(requireContext());
-            notification.addView(icon(R.drawable.sb_ic_bell,"Thông báo",()->open(R.id.notifications)),new FrameLayout.LayoutParams(dp(48),dp(48)));
+            notification.setId(View.generateViewId());
+            notification.addView(headerIcon(R.drawable.sb_ic_bell,"Thông báo",()->open(R.id.notifications)),
+                    new FrameLayout.LayoutParams(dp(48),dp(48)));
             long unread=state.notices.stream().filter(n->!n.read).count();
             if(unread>0){
-                TextView badge=tag(""+unread,R.color.sb_paper);badge.setTextColor(WHITE);badge.setBackground(shape(PINK,20));
+                TextView badge=text(Long.toString(unread),12,R.color.sb_paper,true);
+                badge.setBackground(shape(color(R.color.sb_error),20));
                 badge.setPadding(dp(5),dp(2),dp(5),dp(2));
                 notification.addView(badge,new FrameLayout.LayoutParams(-2,-2,Gravity.END|Gravity.TOP));
             }
-            frame.header.addView(notification,new LinearLayout.LayoutParams(dp(50),dp(48)));
+            ConstraintLayout.LayoutParams notificationSize=alignToAvatar(dp(52),dp(48),avatar);
+            notificationSize.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
+            identity.addView(notification,notificationSize);
+            ConstraintLayout.LayoutParams themeSize=alignToAvatar(dp(48),dp(48),avatar);
+            themeSize.endToStart=notification.getId();
+            themeSize.setMarginEnd(dp(8));
+            identity.addView(theme,themeSize);
+
+            String[] parts=state.profile.name.trim().split("\\s+");
+            String name=parts.length>1?parts[parts.length-2]+" "+parts[parts.length-1]:parts[0];
+            TextView username=text(name,20,R.color.sb_ink,true);
+            username.setId(View.generateViewId());
+            username.setSingleLine(true);
+            username.setEllipsize(TextUtils.TruncateAt.END);
+            ConstraintLayout.LayoutParams nameSize=alignToAvatar(0,-2,avatar);
+            nameSize.startToEnd=avatar.getId();
+            nameSize.endToStart=theme.getId();
+            nameSize.setMarginStart(dp(10));
+            nameSize.setMarginEnd(dp(6));
+            identity.addView(username,nameSize);
+
+            TextView finance=textAction("▣  Tài chính  ›",()->open(R.id.finance));
+            finance.setTextSize(12);
+            finance.setSingleLine(true);
+            finance.setEllipsize(TextUtils.TruncateAt.END);
+            finance.setGravity(Gravity.TOP|Gravity.START);
+            finance.setPaddingRelative(0,dp(3),0,0);
+            ConstraintLayout.LayoutParams financeSize=new ConstraintLayout.LayoutParams(0,-2);
+            financeSize.startToStart=username.getId();
+            financeSize.endToEnd=username.getId();
+            financeSize.topToBottom=username.getId();
+            identity.addView(finance,financeSize);
+
             LinearLayout suggestions=col(), results=col();
             final EditText[] searchInput={null};
             final Consumer<String> submit=query->{
@@ -84,11 +135,25 @@ public final class CatalogPages {
             add(frame.content,suggestions,0);add(frame.content,results,0);
             showResults(results,memory.getString("committed",""));
             hero();
+            if(host.showsHomeAiShortcut()){
+                add(frame.content,textAction(getString(R.string.sb_open_ai),()->open(R.id.ai_chat)),4);
+            }
             List<Product> products=available(state,"");
-            featured("Sản phẩm nổi bật",products.stream().filter(p->p.id<=4).collect(Collectors.toList()));
-            featured("Gợi ý dành cho bạn",products.stream().filter(p->p.id==7||p.id==3).collect(Collectors.toList()));
-            featured("Đồ có thể thuê & mượn",products);
-            featured("Sản phẩm mới đăng",products.stream().filter(Product::recent).collect(Collectors.toList()));
+            featured("Sản phẩm nổi bật",products.stream().filter(Product::hot).collect(Collectors.toList()));
+            featured("Sản phẩm mới đăng",products.stream().filter(p->!p.hot()&&p.recent())
+                    .sorted(Comparator.comparing((Product p)->p.posted).reversed()).collect(Collectors.toList()));
+            featured("Khám phá thêm",products.stream().filter(p->!p.hot()&&!p.recent()).collect(Collectors.toList()));
+        }
+        private ConstraintLayout.LayoutParams alignToAvatar(int width,int height,View avatar){
+            ConstraintLayout.LayoutParams size=new ConstraintLayout.LayoutParams(width,height);
+            size.topToTop=avatar.getId();
+            size.bottomToBottom=avatar.getId();
+            return size;
+        }
+        private ImageButton headerIcon(int drawable,String label,Runnable action){
+            ImageButton button=icon(drawable,label,false,action);
+            button.setPadding(dp(9),dp(9),dp(9),dp(9));
+            return button;
         }
         private void hero(){
             FrameLayout box=new FrameLayout(requireContext());box.setBackgroundResource(R.drawable.sb_gradient);box.setClipToOutline(true);
@@ -105,7 +170,7 @@ public final class CatalogPages {
         }
         private void featured(String title,List<Product> data){
             if(data.isEmpty())return;
-            LinearLayout bar=row();weight(bar,this.title(title));bar.addView(button("Xem tất cả",false,()->host.openTab(R.id.explore)));
+            LinearLayout bar=row();weight(bar,this.title(title));bar.addView(textAction("Xem tất cả",()->host.openTab(R.id.explore)));
             add(frame.content,bar,12);
             embedded(frame.content,data.subList(0,Math.min(4,data.size())),2,p->productCard(p,true,false,()->{}));
         }
@@ -140,64 +205,215 @@ public final class CatalogPages {
     }
 
     public static final class Explore extends Page {
-        private LinearLayout filters, resultsBar;
+        private static final PriceRange[] PRICES=PriceRange.values();
+        private static final Location[] LOCATIONS=Location.values();
+        private static final Condition[] CONDITIONS=Condition.values();
+        private static final String[] PRICE_LABELS=Arrays.stream(PRICES).map(price->price.label).toArray(String[]::new);
+        private static final String[] LOCATION_LABELS=Arrays.stream(LOCATIONS).map(location->location.label).toArray(String[]::new);
+        private static final String[] CONDITION_LABELS=Arrays.stream(CONDITIONS).map(condition->condition.label).toArray(String[]::new);
+        private LinearLayout filters,resultsBar;
         public Explore(){super(R.layout.screen_explore);}
         @Override protected void render(){
             frame.above.setPadding(dp(16),dp(12),dp(16),dp(3));
             searchBar(frame.above,"Tìm theo tên hoặc từ khóa",memory.getString("query",""),
                     s->{memory.putString("query",s);results();},null);
-            filters=col();resultsBar=col();
-            add(frame.above,filters,1);add(frame.above,resultsBar,4);
-            filterControls();results();
+            filters=col();
+            add(frame.above,filters,8);
+            renderFilters();
+            resultsBar=col();
+            add(frame.above,resultsBar,4);
+            results();
         }
-        private void filterControls(){
+        private void renderFilters(){
             filters.removeAllViews();
-            chips(filters,CATEGORY,memory.getInt("category"),i->{memory.putInt("category",i);update();});
+            HorizontalScrollView categories=filterScroll();
+            LinearLayout types=filterGroup(CATEGORY,i->memory.getInt("category")==i,
+                    i->memory.putInt("category",i));
+            categories.addView(types);
+            add(filters,categories,0);
+            int category=memory.getInt("category");
+            if(category>2)categories.post(()->categories.scrollTo(types.getChildAt(category).getLeft(),0));
+
+            TextView free=filterOption("Miễn phí");
+            free.setSelected(memory.getBoolean("free"));
+            click(free,R.drawable.sb_explore_sort,()->{
+                boolean active=!memory.getBoolean("free");
+                memory.putBoolean("free",active);
+                free.setSelected(active);
+                results();
+            });
+            TextView price=picker(getString(R.string.sb_daily_price_filter),getString(R.string.sb_daily_price_title),
+                    "price_range",PRICE_LABELS);
+            TextView location=picker("Địa điểm","Địa điểm","location_filter",LOCATION_LABELS);
+            TextView condition=picker("Tình trạng","Tình trạng","condition_filter",CONDITION_LABELS);
+            var configuration=getResources().getConfiguration();
+            boolean twoRows=configuration.screenWidthDp<320||configuration.fontScale>1.2f;
+            if(twoRows){
+                addFilterRow(free,price);
+                addFilterRow(location,condition);
+            }else addFilterRow(free,price,location,condition);
+        }
+        private void clearFilters(){
+            for(String key:new String[]{"category","free","price_range","location_filter","condition_filter"}){
+                memory.remove(key);
+            }
+            renderFilters();
+            results();
+        }
+        private HorizontalScrollView filterScroll(){
             HorizontalScrollView scroll=new HorizontalScrollView(requireContext());
             scroll.setHorizontalScrollBarEnabled(false);
-            LinearLayout row=row();
-            String[] labels={"Miễn phí","Giá","TP.HCM","Tình trạng"};
-            String[] keys={"free","price","city","condition"};
-            for(int i=0;i<labels.length;i++){
-                String key=keys[i];
-                TextView t=button(labels[i],memory.getBoolean(key),()->{memory.putBoolean(key,!memory.getBoolean(key));update();});
-                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,-2);lp.rightMargin=dp(7);row.addView(t,lp);
-            }
-            scroll.addView(row);add(filters,scroll,8);
+            return scroll;
         }
-        private void update(){filterControls();results();}
-        private boolean hcm(Product p){
-            String area=search(p.location);
-            return DISTRICTS.contains(area)||area.matches("quan (?:[1-9]|1[0-2])")||
-                    area.contains("tp.hcm")||area.contains("tphcm")||area.contains("ho chi minh")||area.contains("sai gon");
+        private void addFilterRow(TextView... controls){
+            LinearLayout group=row();
+            group.setGravity(Gravity.TOP);
+            for(int i=0;i<controls.length;i++){
+                TextView control=controls[i];
+                control.setTextSize(12);
+                control.setMaxLines(2);
+                control.setEllipsize(TextUtils.TruncateAt.END);
+                control.setPaddingRelative(dp(3),dp(6),dp(3),dp(6));
+                LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(0,-2,1);
+                if(i>0)size.setMarginStart(dp(6));
+                group.addView(control,size);
+            }
+            add(filters,group,6);
+        }
+        private TextView picker(String label,String title,String key,String[] labels){
+            TextView control=filterOption(label+" ▾");
+            showPickerSelection(control,title,labels,memory.getInt(key,-1));
+            click(control,R.drawable.sb_explore_sort,()->{
+                int previous=memory.getInt(key,-1);
+                IntConsumer apply=index->{
+                    memory.putInt(key,index);
+                    showPickerSelection(control,title,labels,index);
+                    results();
+                };
+                AlertDialog.Builder dialog=new AlertDialog.Builder(requireContext())
+                        .setTitle(title)
+                        .setSingleChoiceItems(labels,previous,(window,index)->{
+                            apply.accept(index);
+                            window.dismiss();
+                        })
+                        .setNegativeButton("Đóng",null);
+                if(previous>=0)dialog.setNeutralButton("Bỏ lọc",(window,which)->apply.accept(-1));
+                dialog.show();
+            });
+            return control;
+        }
+        private void showPickerSelection(TextView option,String title,String[] labels,int index){
+            option.setSelected(index>=0);
+            option.setContentDescription(index<0?title:title+" · "+labels[index]);
+        }
+        private TextView filterOption(String label){
+            TextView option=text(label,13,R.color.sb_muted,true);
+            option.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_selected},{}},
+                    new int[]{color(R.color.sb_accent),color(R.color.sb_muted)}));
+            option.setGravity(Gravity.CENTER);
+            option.setMinHeight(dp(48));
+            option.setMinWidth(dp(48));
+            return option;
+        }
+        private LinearLayout filterGroup(String[] labels,IntPredicate selected,IntConsumer change){
+            LinearLayout group=row();
+            group.setBackgroundResource(R.drawable.sb_card);
+            group.setPaddingRelative(dp(3),dp(2),dp(3),dp(2));
+            group.setClipToOutline(true);
+            for(int i=0;i<labels.length;i++){
+                int index=i;
+                TextView option=filterOption(labels[i]);
+                option.setSelected(selected.test(i));
+                click(option,R.drawable.sb_explore_filter_fill,()->{
+                    change.accept(index);
+                    for(int j=0;j<group.getChildCount();j++)group.getChildAt(j).setSelected(selected.test(j));
+                    results();
+                });
+                option.setPaddingRelative(dp(8),0,dp(8),0);
+                group.addView(option,new LinearLayout.LayoutParams(-2,-2));
+            }
+            return group;
         }
         private void results(){
             if(resultsBar==null||frame==null)return;
             int c=memory.getInt("category"),order=memory.getInt("sort");
-            boolean grid=!memory.getBoolean("list");
+            boolean grid=!memory.getBoolean("list"),free=memory.getBoolean("free");
+            int price=memory.getInt("price_range",-1),location=memory.getInt("location_filter",-1);
+            int condition=memory.getInt("condition_filter",-1);
             List<Product> data=available(state,memory.getString("query","")).stream().filter(p->
-                    (c==0||p.category.equals(CATEGORY[c]))&&(!memory.getBoolean("free")||p.rate==0)&&
-                    (!memory.getBoolean("price")||(p.rate>0&&p.rate<=100000))&&
-                    (!memory.getBoolean("city")||hcm(p))&&(!memory.getBoolean("condition")||!p.condition.equals("Đã dùng"))).collect(Collectors.toList());
+                    (c==0||p.category.equals(CATEGORY[c]))&&(!free||p.rate==0)&&
+                    (price<0||PRICES[price].contains(p.rate))&&
+                    (location<0||Location.fromAddress(p.location)==LOCATIONS[location])&&
+                    (condition<0||Condition.fromStored(p.condition)==CONDITIONS[condition])).collect(Collectors.toList());
             if(order==1)data.sort(Comparator.comparingLong(p->p.rate));
             else if(order==2)data.sort(Comparator.comparingLong((Product p)->p.rate).reversed());
             else data.sort(Comparator.comparing((Product p)->p.posted).reversed());
             resultsBar.removeAllViews();
             LinearLayout bar=row();
-            TextView count=meta(data.size()+" kết quả");count.setMaxLines(1);weight(bar,count);
-            bar.addView(icon(R.drawable.sb_ic_heart,"Yêu thích",()->open(R.id.wishlist)));
-            Runnable sort=()->{memory.putInt("sort",(order+1)%ORDER.length);results();};
-            if(getResources().getConfiguration().screenWidthDp<370)bar.addView(icon(R.drawable.sb_ic_list,"Sắp xếp · "+ORDER[order],sort));
-            else bar.addView(button(ORDER[order],false,sort));
-            ImageButton tiles=icon(R.drawable.sb_ic_grid,"Dạng lưới",()->{memory.putBoolean("list",false);results();});
-            ImageButton rows=icon(R.drawable.sb_ic_list,"Dạng danh sách",()->{memory.putBoolean("list",true);results();});
-            (grid?tiles:rows).setImageTintList(android.content.res.ColorStateList.valueOf(color(R.color.sb_accent)));
-            bar.addView(tiles);bar.addView(rows);add(resultsBar,bar,4);
+            var configuration=getResources().getConfiguration();
+            boolean compact=configuration.screenWidthDp<400||configuration.fontScale>1.15f;
+            boolean filtered=c!=0||free||price>=0||location>=0||condition>=0;
+            if(filtered){
+                List<String> selections=new ArrayList<>();
+                if(price>=0)selections.add(PRICE_LABELS[price]);
+                if(location>=0)selections.add(LOCATION_LABELS[location]);
+                if(condition>=0)selections.add(CONDITION_LABELS[condition]);
+                if(!selections.isEmpty())add(resultsBar,meta(String.join(" · ",selections)),4);
+                LinearLayout filterStatus=row();
+                weight(filterStatus,meta(data.size()+" kết quả"));
+                filterStatus.addView(textAction(getString(R.string.sb_clear_filters),this::clearFilters));
+                add(resultsBar,filterStatus,0);
+            }
+            if(!compact)weight(bar,new Space(requireContext()));
+
+            bar.addView(icon(R.drawable.sb_ic_heart,"Yêu thích",false,()->open(R.id.wishlist)));
+            TextView sort=text(ORDER[order],14,order==0?R.color.sb_accent:R.color.sb_ink,true);
+            sort.setGravity(Gravity.CENTER);
+            sort.setMinHeight(dp(48));
+            sort.setMaxLines(2);
+            sort.setEllipsize(TextUtils.TruncateAt.END);
+            sort.setSelected(order==0);
+            click(sort,R.drawable.sb_explore_sort,()->{memory.putInt("sort",(order+1)%ORDER.length);results();});
+            sort.setPaddingRelative(dp(8),0,dp(8),0);
+            sort.setContentDescription("Sắp xếp · "+ORDER[order]);
+            LinearLayout.LayoutParams sortSize=new LinearLayout.LayoutParams(compact?0:-2,-2,compact?1:0);
+            sortSize.setMarginStart(dp(8));
+            sortSize.setMarginEnd(dp(8));
+            bar.addView(sort,sortSize);
+
+            bar.addView(viewSwitcher(grid));
+            add(resultsBar,bar,4);
             frame.content.removeAllViews();
             if(data.isEmpty()){
                 frame.items.setVisibility(View.GONE);frame.scroll.setVisibility(View.VISIBLE);
-                empty(frame.content,"⌕","Không có kết quả","Thử từ khóa khác hoặc bỏ bớt bộ lọc.","Xóa bộ lọc",()->{memory.clear();refresh();});
+                empty(frame.content,"⌕","Không có kết quả",
+                        filtered?"Thử từ khóa khác hoặc bỏ bớt bộ lọc.":"Thử một từ khóa khác.","",null);
             }else pageList(data,grid?2:1,p->productCard(p,grid,false,()->{}));
+        }
+        private View viewSwitcher(boolean grid){
+            FrameLayout surface=new FrameLayout(requireContext());
+            surface.setBackgroundResource(R.drawable.sb_card);
+            surface.setElevation(dp(2));
+            surface.setPadding(dp(4),dp(3),dp(4),dp(3));
+
+            LinearLayout track=row();
+            track.setBackground(shape(color(R.color.sb_canvas),12));
+            track.addView(viewMode(R.drawable.sb_ic_grid,"Dạng lưới",grid,false));
+            track.addView(viewMode(R.drawable.sb_ic_list,"Dạng danh sách",!grid,true));
+            surface.addView(track,new FrameLayout.LayoutParams(dp(96),dp(48)));
+            return surface;
+        }
+        private ImageButton viewMode(int drawable,String label,boolean selected,boolean list){
+            ImageButton option=icon(drawable,label,false,()->{memory.putBoolean("list",list);results();});
+            option.setSelected(selected);
+            if(selected){
+                option.setBackgroundResource(R.drawable.sb_explore_view_selected);
+                option.setElevation(dp(1));
+                option.setImageTintList(ColorStateList.valueOf(color(R.color.sb_accent)));
+            }
+            option.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            option.setPadding(dp(12),dp(12),dp(12),dp(12));
+            return option;
         }
     }
 
@@ -232,7 +448,7 @@ public final class CatalogPages {
             if(state.preferences.getOrDefault("Hiển thị số điện thoại",false)&&p.own&&state.transactions.stream().anyMatch(t->t.productId==p.id))
                 add(owner,meta(state.profile.phone),6);
             add(box,owner,14);
-            note(box,"Bạn có thể thương lượng qua chat trước khi gửi yêu cầu chính thức.",R.color.sb_accent);
+            add(box,meta("Bạn có thể thương lượng qua chat trước khi gửi yêu cầu chính thức."),10);
             footer("Chat với chủ sản phẩm",true,()->openChat(p));
             footer("Yêu cầu giao dịch",false,()->{
                 LocalDate start=selected("from");
@@ -252,8 +468,10 @@ public final class CatalogPages {
             FrameLayout.LayoutParams picture=new FrameLayout.LayoutParams(-1,-1);picture.setMargins(dp(40),dp(28),dp(40),dp(20));frameImage.addView(art,picture);
             FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.TOP|Gravity.START);lp.setMargins(dp(12),dp(10),dp(12),0);
             frameImage.addView(icon(R.drawable.sb_ic_back,"Quay lại",this::back),lp);
-            LinearLayout menu=row();TextView heart=button("♡",false,()->{});favorite(heart,p);
-            click(heart,R.drawable.sb_card,()->{vm.favorite(p.id);favorite(heart,p);});menu.addView(heart);
+            LinearLayout menu=row();
+            ImageButton heart=icon(R.drawable.sb_ic_heart,"Yêu thích",()->{});
+            bindFavorite(heart,p,null);
+            menu.addView(heart);
             menu.addView(icon(R.drawable.sb_ic_flag,"Báo cáo sản phẩm",()->report(p)));
             FrameLayout.LayoutParams right=new FrameLayout.LayoutParams(-2,-2,Gravity.TOP|Gravity.END);right.setMargins(0,dp(10),dp(12),0);
             frameImage.addView(menu,right);

@@ -22,6 +22,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.sharebox.MainActivity;
@@ -39,6 +40,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntConsumer;
+import java.util.function.IntPredicate;
 import static com.example.sharebox.data.Models.*;
 
 public abstract class Page extends Fragment {
@@ -132,12 +135,23 @@ public abstract class Page extends Fragment {
         click(t,primary?R.drawable.sb_blue:R.drawable.sb_card,run);
         return t;
     }
+    protected TextView textAction(String label,Runnable action){
+        TextView link=text(label,14,R.color.sb_accent,true);
+        link.setGravity(Gravity.CENTER);
+        link.setMinHeight(dp(48));
+        click(link,0,action);
+        link.setPaddingRelative(dp(8),0,dp(8),0);
+        return link;
+    }
     protected ImageButton icon(int asset,String label,Runnable run){
+        return icon(asset,label,true,run);
+    }
+    protected ImageButton icon(int asset,String label,boolean framed,Runnable run){
         ImageButton b=new ImageButton(requireContext());
         b.setImageResource(asset);b.setImageTintList(ColorStateList.valueOf(color(R.color.sb_ink)));
         b.setLayoutParams(new LinearLayout.LayoutParams(dp(48),dp(48)));
         b.setPadding(dp(12),dp(12),dp(12),dp(12));b.setScaleType(ImageView.ScaleType.FIT_CENTER);b.setContentDescription(label);
-        click(b,R.drawable.sb_card,run);
+        click(b,framed?R.drawable.sb_card:0,run);
         return b;
     }
     protected void click(View target,int background,Runnable action){
@@ -184,10 +198,47 @@ public abstract class Page extends Fragment {
             TextView t=button(options[i],i==current,()->choose.accept(n));
             t.setTextSize(13);t.setBackground(new RippleDrawable(ColorStateList.valueOf(0x20265de6),
                     shape(i==current?color(R.color.sb_blue):color(R.color.sb_paper),28),shape(WHITE,28)));
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,-2);lp.rightMargin=dp(8);row.addView(t,lp);
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,-2);lp.setMarginEnd(dp(8));row.addView(t,lp);
         }
         scroll.addView(row);add(parent,scroll,8);
         if(current>2)scroll.post(()->{if(current<row.getChildCount())scroll.smoothScrollTo(row.getChildAt(current).getLeft(),0);});
+    }
+    protected void flatFilters(LinearLayout parent,String[] labels,IntPredicate selected,IntConsumer choose){
+        HorizontalScrollView scroll=new HorizontalScrollView(requireContext());
+        scroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout options=row();
+        int firstSelected=-1;
+        for(int i=0;i<labels.length;i++){
+            int index=i;
+            TextView option=text(labels[i],13,R.color.sb_muted,false);
+            option.setGravity(Gravity.CENTER);
+            option.setMinHeight(dp(48));
+            option.setMinWidth(dp(48));
+            click(option,0,()->{
+                choose.accept(index);
+                for(int j=0;j<options.getChildCount();j++){
+                    showFilterSelection((TextView)options.getChildAt(j),selected.test(j));
+                }
+            });
+            option.setPaddingRelative(dp(10),0,dp(10),0);
+            boolean active=selected.test(i);
+            showFilterSelection(option,active);
+            if(active&&firstSelected<0)firstSelected=i;
+            options.addView(option,new LinearLayout.LayoutParams(-2,-2));
+        }
+        scroll.addView(options);
+        add(parent,scroll,0);
+        if(firstSelected>=3){
+            View selectedOption=options.getChildAt(firstSelected);
+            scroll.post(()->scroll.scrollTo(selectedOption.getLeft(),0));
+        }
+    }
+    private void showFilterSelection(TextView option,boolean selected){
+        option.setSelected(selected);
+        option.setTextColor(color(selected?R.color.sb_accent:R.color.sb_muted));
+        option.setTypeface(Typeface.DEFAULT,selected?Typeface.BOLD:Typeface.NORMAL);
+        option.setPaintFlags(selected?option.getPaintFlags()|android.graphics.Paint.UNDERLINE_TEXT_FLAG:
+                option.getPaintFlags()&~android.graphics.Paint.UNDERLINE_TEXT_FLAG);
     }
     protected AppCompatEditText field(LinearLayout p,String title,String hint,String value,int type,int lines){
         ComponentFieldBinding field=ComponentFieldBinding.inflate(getLayoutInflater(),p,false);
@@ -203,18 +254,38 @@ public abstract class Page extends Fragment {
         return field.fieldInput;
     }
     protected LinearLayout searchBar(LinearLayout parent,String hint,String initial,Consumer<String> change,Consumer<String> enter) {
-        LinearLayout box=row();box.setBackgroundResource(R.drawable.sb_card);box.setPadding(dp(6),0,dp(3),0);
-        ImageButton lens=icon(R.drawable.sb_ic_search,"Tìm kiếm",()->{});
-        box.addView(lens);
+        LinearLayout box=row();
+        box.setBackgroundResource(R.drawable.sb_card);
         AppCompatEditText input=new AppCompatEditText(requireContext());
-        input.setSingleLine(true);input.setTextSize(14);input.setMinHeight(dp(50));input.setBackgroundColor(0x00000000);
-        input.setHint(hint);input.setTextColor(color(R.color.sb_ink));input.setHintTextColor(color(R.color.sb_muted));input.setText(initial);
+        input.setSingleLine(true);
+        input.setTextSize(14);
+        input.setMinHeight(dp(50));
+        input.setMinWidth(0);
+        input.setPaddingRelative(dp(2),dp(8),dp(2),dp(8));
+        input.setBackgroundColor(0x00000000);
+        input.setHint(hint);
+        input.setTextColor(color(R.color.sb_ink));
+        input.setHintTextColor(color(R.color.sb_muted));
+        input.setText(initial);
         input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        ImageButton lens=icon(R.drawable.sb_ic_search,"Tìm kiếm",()->{});
+        click(lens,0,()->{
+            if(enter!=null)enter.accept(value(input));
+            else if(input.requestFocus()){
+                InputMethodManager manager=requireContext().getSystemService(InputMethodManager.class);
+                if(manager!=null)manager.showSoftInput(input,InputMethodManager.SHOW_IMPLICIT);
+            }
+        });
+        box.addView(lens);
         weight(box,input);
-        TextView clear=button("×",false,()->input.setText(""));clear.setContentDescription("Xóa tìm kiếm");
-        clear.setVisibility(initial.isEmpty()?View.GONE:View.VISIBLE);box.addView(clear);
-        watch(input,value->{clear.setVisibility(value.isEmpty()?View.GONE:View.VISIBLE);change.accept(value);});
-        lens.setOnClickListener(v->{if(enter!=null)enter.accept(value(input)); else input.requestFocus();});
+        ImageButton clear=icon(R.drawable.sb_ic_close,"Xóa tìm kiếm",()->{});
+        click(clear,0,()->input.setText(""));
+        clear.setVisibility(initial.isEmpty()?View.INVISIBLE:View.VISIBLE);
+        box.addView(clear);
+        watch(input,value->{
+            clear.setVisibility(value.isEmpty()?View.INVISIBLE:View.VISIBLE);
+            change.accept(value);
+        });
         input.setOnEditorActionListener((v,action,event)->{
             if(action==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){
                 if(enter!=null)enter.accept(value(input));keyboardHide(input);return true;
@@ -318,17 +389,31 @@ public abstract class Page extends Fragment {
         b.name.setText(p.name);b.price.setText(p.price());b.price.setTextColor(color(p.rate==0?R.color.sb_success:R.color.sb_accent));
         b.deposit.setText(p.deposit>0?"Cọc "+money(p.deposit):"Không cần cọc");
         b.location.setText("⌖  "+p.location);b.quantity.setText("◇  Số lượng: "+p.quantity);
-        favorite(b.favorite,p);
-        click(b.favorite,R.drawable.sb_card,()->{vm.favorite(p.id);if(wish)repaint.run();else favorite(b.favorite,p);});
+        bindFavorite(b.favorite,p,wish?repaint:null);
         b.chatAction.setVisibility(wish?View.VISIBLE:View.GONE);
         b.chatAction.setOnClickListener(v->openChat(p));
         click(b.getRoot(),R.drawable.sb_card,()->open(R.id.product,p.id));
         return b.getRoot();
     }
-    protected void favorite(TextView view,Product p){
-        boolean on=state.favorites.contains(p.id);
-        view.setText(on?"♥":"♡");view.setTextColor(on?PINK:color(R.color.sb_ink));
-        view.setContentDescription(on?"Bỏ yêu thích":"Yêu thích");
+    protected void bindFavorite(ImageButton view,Product product,Runnable repaint){
+        var owner=getViewLifecycleOwner();
+        Observer<State> show=updated->{
+            boolean selected=updated.favorites.contains(product.id);
+            view.setImageResource(selected?R.drawable.sb_ic_heart_filled:R.drawable.sb_ic_heart);
+            view.setImageTintList(ColorStateList.valueOf(selected?PINK:color(R.color.sb_ink)));
+            view.setSelected(selected);
+            view.setContentDescription(selected?"Bỏ yêu thích":"Yêu thích");
+        };
+        show.onChanged(state);
+        view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener(){
+            @Override public void onViewAttachedToWindow(View v){vm.changes().observe(owner,show);}
+            @Override public void onViewDetachedFromWindow(View v){vm.changes().removeObserver(show);}
+        });
+        if(view.isAttachedToWindow())vm.changes().observe(owner,show);
+        click(view,R.drawable.sb_card,()->{
+            vm.favorite(product.id);
+            if(repaint!=null)repaint.run();
+        });
     }
     protected View productSummary(Product p,String second){
         LinearLayout row=row();ImageView pic=image(p.art,cover(p),false);

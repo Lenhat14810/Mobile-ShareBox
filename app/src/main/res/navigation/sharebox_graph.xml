@@ -1,6 +1,5 @@
 <navigation xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/sharebox_graph" app:startDestination="@id/splash">
     <fragment android:id="@+id/splash" android:name="com.example.sharebox.ui.AuthPages$Splash" android:label="splash"/>
-    <fragment android:id="@+id/onboarding" android:name="com.example.sharebox.ui.AuthPages$Onboarding" android:label="onboarding"/>
     <fragment android:id="@+id/auth" android:name="com.example.sharebox.ui.AuthPages$Auth" android:label="auth"/>
     <fragment android:id="@+id/home" android:name="com.example.sharebox.ui.CatalogPages$Home" android:label="home"/>
     <fragment android:id="@+id/explore" android:name="com.example.sharebox.ui.CatalogPages$Explore" android:label="explore"/>

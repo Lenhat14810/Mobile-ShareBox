@@ -200,7 +200,7 @@ public final class Models {
         public final List<String> reports=new ArrayList<>();
         public Profile profile=new Profile("Nguyễn Minh Anh","minhanh@gmail.com","0901234567","Thủ Đức, TP.HCM",
                 "Sinh viên UIT, thích chia sẻ đồ dùng học tập và thiết bị công nghệ.",null);
-        public boolean signedIn, dark, assistantHidden, assistantBusy;
+        public boolean signedIn, dark, assistantBusy;
         public Product product(int id) { for (Product p:products) if(p.id==id)return p; return null; }
         public Transaction transaction(int id) { for(Transaction t:transactions) if(t.id==id)return t; return null; }
         public boolean available(int id,LocalDate start,int days) {

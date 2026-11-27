@@ -3,6 +3,7 @@ package com.example.sharebox.ui;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputFilter;
@@ -11,10 +12,12 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import com.example.sharebox.R;
+import com.example.sharebox.data.ListingFilters.Condition;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -27,7 +30,8 @@ public final class ProfilePages {
     private ProfilePages(){}
     private static final String EMAIL_NOTE="Email dùng để đăng nhập nên không thể thay đổi.";
     private static final String[] CATEGORIES={"Điện tử","Điện thoại","Laptop","Đồ gia dụng","Thời trang","Thể thao","Sách","Dụng cụ","Nội thất","Khác"};
-    private static final String[] CONDITIONS={"Mới","Như mới","Đã dùng"};
+    private static final Condition[] CONDITIONS=Condition.values();
+    private static final String[] CONDITION_LABELS=Arrays.stream(CONDITIONS).map(c->c.label).toArray(String[]::new);
 
     private abstract static class AccountPage extends Page {
         AccountPage(int layout){super(layout);}
@@ -46,9 +50,14 @@ public final class ProfilePages {
             View rule=new View(requireContext());rule.setBackgroundColor(color(R.color.sb_stroke));
             parent.addView(rule,new LinearLayout.LayoutParams(-1,dp(1)));
         }
+        protected void about(){
+            new AlertDialog.Builder(requireContext()).setTitle("Về ShareBox")
+                    .setMessage("ShareBox 1.0.0\nChia sẻ tiện ích – Kết nối cộng đồng.")
+                    .setPositiveButton("Đóng",null).show();
+        }
         protected void logout(){
             confirm("Đăng xuất?","Bạn sẽ trở về màn hình đăng nhập.","Đăng xuất",()->{
-                state.signedIn=false;state.assistantHidden=false;vm.changed();host.reset(R.id.auth);
+                state.signedIn=false;vm.changed();host.reset(R.id.auth);
             });
         }
         protected View profileAvatar(Profile profile,int size){
@@ -83,7 +92,7 @@ public final class ProfilePages {
             menu(menu,"♧","Thông báo","",(int)state.notices.stream().filter(n->!n.read).count(),()->open(R.id.notifications));
             menu(menu,"⚙","Cài đặt","",0,()->open(R.id.settings));
             menu(menu,"ⓘ","Trợ giúp & hỗ trợ","",0,()->open(R.id.settings,1));
-            menu(menu,"ⓘ","Về ShareBox","",0,()->open(R.id.settings,2));
+            menu(menu,"ⓘ","Về ShareBox","",0,this::about);
             menu(menu,"⇥","Đăng xuất","",0,this::logout);
             add(frame.content,menu,13);
             TextView version=meta("ShareBox 1.0.0");version.setGravity(Gravity.CENTER);add(frame.content,version,12);
@@ -204,7 +213,57 @@ public final class ProfilePages {
             for(Uri u:uris)if(files.size()<8&&!files.contains(u.toString()))files.add(u.toString());
             memory.putStringArrayList("photos",files);refresh();
         });
+        private AlertDialog discardDialog;
         public Create(){super(R.layout.screen_create_product);}
+        @Override public void onCreate(Bundle saved){
+            super.onCreate(saved);
+            requireActivity().getOnBackPressedDispatcher().addCallback(this,new OnBackPressedCallback(true){
+                @Override public void handleOnBackPressed(){back();}
+            });
+        }
+        @Override protected void back(){requestLeave(super::back);}
+        public void requestLeave(Runnable leave){
+            if(!hasUnsavedChanges()){
+                leave.run();
+                return;
+            }
+            if(discardDialog!=null)return;
+            discardDialog=new AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.sb_discard_listing_title)
+                    .setMessage(R.string.sb_discard_listing_message)
+                    .setNegativeButton(R.string.sb_keep_editing,null)
+                    .setPositiveButton(R.string.sb_discard_listing,(dialog,which)->leave.run())
+                    .create();
+            discardDialog.setOnDismissListener(dialog->discardDialog=null);
+            discardDialog.show();
+        }
+        @Override public void onDestroyView(){
+            if(discardDialog!=null)discardDialog.dismiss();
+            super.onDestroyView();
+        }
+        private boolean hasUnsavedChanges(){
+            if(memory.getBoolean("saved"))return false;
+            Product p=product();
+            boolean initiallyFree=p!=null&&p.rate==0;
+            boolean free=memory.getBoolean("free",initiallyFree);
+            String savedCondition=memory.getString("listing_condition");
+            return textChanged("name",p==null?"":p.name)
+                    ||textChanged("description",p==null?"":p.description)
+                    ||textChanged("area",p==null?state.profile.area:p.location)
+                    ||textChanged("quantity",p==null?"1":Integer.toString(p.quantity))
+                    ||textChanged("deposit",p==null||p.deposit==0?"":Long.toString(p.deposit))
+                    ||free!=initiallyFree
+                    ||(!free&&textChanged("price",p==null||p.rate==0?"":Long.toString(p.rate)))
+                    ||memory.getInt("category",initialCategory(p))!=initialCategory(p)
+                    ||(savedCondition!=null&&!Condition.valueOf(savedCondition).label.equals(p==null?Condition.NEW.label:p.condition))
+                    ||!images().equals(p==null?Collections.emptyList():p.images);
+        }
+        private boolean textChanged(String key,String initial){
+            return !memory.getString(key,initial).trim().equals(initial.trim());
+        }
+        private int initialCategory(Product p){
+            return p==null?0:Math.max(0,Arrays.asList(CATEGORIES).indexOf(p.category));
+        }
         private ArrayList<String> images(){
             ArrayList<String> value=memory.getStringArrayList("photos");
             Product p=product();
@@ -222,11 +281,16 @@ public final class ProfilePages {
             add(view,title("Hình ảnh (tối đa 8 ảnh)"),0);
             gallery(p);
             EditText name=draft(view,"Tên sản phẩm","Ví dụ: Máy ảnh Canon EOS 200D","name",p==null?"":p.name,InputType.TYPE_CLASS_TEXT,1);
+            TextView nameError=validationMessage(view,name);
             EditText desc=draft(view,"Mô tả","Tình trạng, phụ kiện đi kèm, lưu ý khi sử dụng…","description",p==null?"":p.description,InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE,3);
-            int category=memory.getInt("category",p==null?0:Math.max(0,Arrays.asList(CATEGORIES).indexOf(p.category)));
-            int condition=memory.getInt("condition",p==null?1:Math.max(0,Arrays.asList(CONDITIONS).indexOf(p.condition)));
+            int category=memory.getInt("category",initialCategory(p));
+            Condition previous=p==null?Condition.NEW:Condition.fromStored(p.condition);
+            String savedCondition=memory.getString("listing_condition");
+            int condition=savedCondition==null?(previous==null?-1:previous.ordinal()):
+                    Condition.valueOf(savedCondition).ordinal();
             add(view,body("Danh mục"),14);chips(view,CATEGORIES,category,i->{memory.putInt("category",i);refresh();});
-            add(view,body("Tình trạng sản phẩm"),14);chips(view,CONDITIONS,condition,i->{memory.putInt("condition",i);refresh();});
+            add(view,body("Tình trạng sản phẩm"),14);
+            chips(view,CONDITION_LABELS,condition,i->{memory.putString("listing_condition",CONDITIONS[i].name());refresh();});
             EditText area=draft(view,"Khu vực","Thủ Đức, TP.HCM","area",p==null?state.profile.area:p.location,InputType.TYPE_CLASS_TEXT,1);
             LinearLayout fees=panel();add(fees,title("Thuê / mượn"),0);
             boolean free=memory.getBoolean("free",p!=null&&p.rate==0);
@@ -236,26 +300,54 @@ public final class ProfilePages {
             add(fees,type,7);
             if(free)add(fees,text("Miễn phí",15,R.color.sb_success,true),4);
             EditText price=free?null:draft(fees,"Giá thuê mỗi ngày (đ)","250000","price",p==null||p.rate==0?"":""+p.rate,InputType.TYPE_CLASS_NUMBER,1);
+            TextView priceError=price==null?null:validationMessage(fees,price);
             EditText deposit=draft(fees,"Tiền đặt cọc (tùy chọn)","Không cần cọc","deposit",p==null||p.deposit==0?"":""+p.deposit,InputType.TYPE_CLASS_NUMBER,1);
             add(fees,meta("Tiền cọc hiển thị riêng, hoàn lại khi trả đồ."),6);
             EditText quantity=draft(fees,"Số lượng","1","quantity",p==null?"1":""+p.quantity,InputType.TYPE_CLASS_NUMBER,1);
+            TextView quantityError=validationMessage(fees,quantity);
             if(price!=null)price.setFilters(new InputFilter[]{new InputFilter.LengthFilter(9)});
             deposit.setFilters(new InputFilter[]{new InputFilter.LengthFilter(9)});
             quantity.setFilters(new InputFilter[]{new InputFilter.LengthFilter(3)});
             add(view,fees,14);
             footer(p==null?"Đăng tin":"Lưu thay đổi",true,()->{
-                boolean valid=true;
-                if(value(name).isEmpty()){name.setError("Vui lòng nhập tên sản phẩm");valid=false;}
-                if(price!=null&&number(price)<=0){price.setError("Nhập giá thuê mỗi ngày");valid=false;}
-                if(number(quantity)<=0||number(quantity)>999){quantity.setError("Nhập số lượng từ 1 đến 999");valid=false;}
-                if(!valid){shortNote("Kiểm tra các ô được đánh dấu.");return;}
+                boolean invalidName=value(name).isEmpty();
+                boolean invalidPrice=price!=null&&number(price)<=0;
+                boolean invalidQuantity=number(quantity)<=0||number(quantity)>999;
+                showValidation(nameError,invalidName?"Vui lòng nhập tên sản phẩm":null);
+                if(priceError!=null)showValidation(priceError,invalidPrice?"Nhập giá thuê mỗi ngày":null);
+                showValidation(quantityError,invalidQuantity?"Nhập số lượng từ 1 đến 999":null);
+                if(invalidName||invalidPrice||invalidQuantity){
+                    EditText first=invalidName?name:invalidPrice?price:quantity;
+                    TextView message=invalidName?nameError:invalidPrice?priceError:quantityError;
+                    first.requestFocus();
+                    message.post(()->{
+                        if(message.isAttachedToWindow()){
+                            first.requestRectangleOnScreen(new Rect(0,0,first.getWidth(),
+                                    first.getHeight()+message.getHeight()+dp(4)),true);
+                        }
+                    });
+                    return;
+                }
                 Art art=p==null?art(CATEGORIES[category]):p.art;
                 Product result=new Product(p==null?vm.nextProduct():p.id,value(name),art,price==null?0:number(price),number(deposit),
                         value(area).isEmpty()?state.profile.area:value(area),(int)number(quantity),p==null?state.profile.name:p.owner,
-                        CATEGORIES[category],CONDITIONS[condition],value(desc),true,p==null?Status.ACTIVE:p.status,
+                        CATEGORIES[category],p!=null&&savedCondition==null?p.condition:CONDITIONS[condition].label,
+                        value(desc),true,p==null?Status.ACTIVE:p.status,
                         p==null?DEMO:p.posted,p==null?0:p.goodReviews,p==null?0:p.rentals,images(),p==null?"":p.note);
                 keyboardHide(name);vm.listing(result);memory.putBoolean("saved",true);refresh();
             });
+        }
+        private TextView validationMessage(LinearLayout parent,EditText field){
+            TextView message=text("",12,R.color.sb_error,false);
+            message.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+            message.setVisibility(View.GONE);
+            add(parent,message,4);
+            watch(field,value->showValidation(message,null));
+            return message;
+        }
+        private void showValidation(TextView message,String error){
+            message.setText(error);
+            message.setVisibility(error==null?View.GONE:View.VISIBLE);
         }
         private EditText draft(LinearLayout parent,String label,String hint,String key,String fallback,int input,int lines){
             EditText field=field(parent,label,hint,memory.getString(key,fallback),input,lines);
@@ -329,7 +421,7 @@ public final class ProfilePages {
                     (filter==1&&e.type==EntryType.INCOME)||(filter==2&&e.type==EntryType.EXPENSE)||(filter==3&&e.type.deposit())).collect(Collectors.toList());
             if(history.isEmpty())empty(frame.content,"▣","Chưa có dữ liệu","Lịch sử sẽ xuất hiện khi có giao dịch phù hợp.","",null);
             else embedded(frame.content,history,1,this::entryRow);
-            note(frame.content,"Đây là sổ theo dõi thu chi, không phải ví điện tử. ShareBox không giữ hay chuyển tiền.",R.color.sb_muted);
+            add(frame.content,meta("Đây là sổ theo dõi thu chi, không phải ví điện tử. ShareBox không giữ hay chuyển tiền."),10);
         }
         private long sum(List<Entry> rows,EntryType type){return rows.stream().filter(e->e.type==type).mapToLong(e->e.amount).sum();}
         private LinearLayout whiteTotal(String caption,String money){
@@ -414,7 +506,11 @@ public final class ProfilePages {
         public Settings(){super(R.layout.screen_settings);}
         @Override protected void render(){
             header();
-            section("GIAO DIỆN",p->switchRow(p,"Chế độ tối","Giao diện sáng / tối",state.dark,host::dark));
+            section("GIAO DIỆN",p->{
+                switchRow(p,"Chế độ tối","Giao diện sáng / tối",state.dark,host::dark);
+                switchRow(p,getString(R.string.sb_ai_home_setting),getString(R.string.sb_ai_home_description),
+                        host.showsHomeAiShortcut(),host::setHomeAiShortcut);
+            });
             section("TÀI KHOẢN",p->{
                 menu(p,"♙","Thông tin tài khoản","",0,()->open(R.id.edit_profile));
                 menu(p,"♧","Đổi mật khẩu","",0,this::changePassword);
@@ -465,8 +561,6 @@ public final class ProfilePages {
             choose("Trung tâm trợ giúp",questions,i->new AlertDialog.Builder(requireContext()).setTitle(questions[i])
                     .setMessage(answers[i]).setPositiveButton("Đóng",null).show());
         }
-        private void about(){new AlertDialog.Builder(requireContext()).setTitle("Về ShareBox")
-                .setMessage("ShareBox 1.0.0\nChia sẻ tiện ích – Kết nối cộng đồng.").setPositiveButton("Đóng",null).show();}
         private void report(){
             LinearLayout v=dialogBody();EditText input=field(v,"Mô tả sự cố","Nhập nội dung","",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE,3);
             validatedDialog("Báo cáo sự cố",v,"Gửi",()->{

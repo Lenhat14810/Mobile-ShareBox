@@ -1,5 +1,7 @@
 package com.example.sharebox.ui;
 
+import android.content.res.ColorStateList;
+import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
 import android.view.Gravity;
 import android.view.View;
@@ -107,6 +109,7 @@ public final class ChatPages {
             TextView name=title("✧   ShareBox AI");name.setTextColor(WHITE);add(ai,name,0);
             TextView assistant=meta("Trợ lý tự động – tìm đồ, so sánh giá thuê");assistant.setTextColor(0xffe5edff);add(ai,assistant,5);
             click(ai,R.drawable.sb_gradient,()->open(R.id.ai_chat));add(frame.above,ai,0);
+            space(frame.above,12);
             searchBar(frame.above,"Tìm cuộc trò chuyện",memory.getString("query",""),s->{memory.putString("query",s);update();},null);
             heading=row();add(frame.above,heading,6);update();
         }
@@ -135,15 +138,36 @@ public final class ChatPages {
             LinearLayout panel=panel(), row=row();row.addView(avatar(c.initials));
             LinearLayout words=col();words.setPadding(dp(10),0,dp(4),0);
             LinearLayout title=row();
-            weight(title,text(c.name+(c.unread>0?"  ●":""),14,R.color.sb_ink,c.unread>0));
+            boolean unread=c.unread>0;
+            TextView name=text(c.name,14,unread?R.color.sb_accent:R.color.sb_ink,unread);
+            name.setPaddingRelative(0,0,dp(4),0);
+            weight(title,name);
             title.addView(meta(latest.time));add(words,title,0);
             add(words,meta("◇  "+product.name+(c.muted?"  ·  Đã tắt thông báo":"")),5);
             TextView line=text(vm.blocked(product)?"Bạn đã chặn người dùng này":(latest.mine?"Bạn: ":"")+latest.text,
                     12,vm.blocked(product)?R.color.sb_error:R.color.sb_muted,c.unread>0);
             line.setMaxLines(2);add(words,line,5);weight(row,words);
-            if(c.unread>0)row.addView(tag(""+c.unread,R.color.sb_error));
-            row.addView(button("⋯",false,()->options(c,this::update)));
-            add(panel,row,0);click(panel,R.drawable.sb_card,()->openChat(product));return panel;
+            if(unread){
+                TextView badge=text(c.unread>99?"99+":Integer.toString(c.unread),11,R.color.sb_paper,true);
+                badge.setTextColor(WHITE);
+                badge.setGravity(Gravity.CENTER);
+                badge.setMaxLines(1);
+                badge.setAutoSizeTextTypeUniformWithConfiguration(8,11,1,android.util.TypedValue.COMPLEX_UNIT_SP);
+                badge.setBackgroundResource(R.drawable.sb_unread_badge);
+                badge.setContentDescription(getResources().getQuantityString(
+                        R.plurals.sb_conversation_unread,c.unread,c.unread));
+                row.addView(badge,new LinearLayout.LayoutParams(dp(28),dp(28)));
+            }
+            ImageButton menu=icon(R.drawable.sb_ic_more,getString(R.string.sb_conversation_options,c.name),
+                    false,()->options(c,this::update));
+            menu.setBackground(new RippleDrawable(ColorStateList.valueOf(color(R.color.sb_stroke)),
+                    shape(color(unread?R.color.sb_paper:R.color.sb_tint),24),null));
+            LinearLayout.LayoutParams menuSize=new LinearLayout.LayoutParams(dp(48),dp(48));
+            menuSize.setMarginStart(dp(10));
+            row.addView(menu,menuSize);
+            add(panel,row,0);
+            click(panel,unread?R.drawable.sb_tint:R.drawable.sb_card,()->openChat(product));
+            return panel;
         }
     }
 
@@ -196,8 +220,10 @@ public final class ChatPages {
         private boolean observed;
         public Assistant(){super(R.layout.screen_ai_chat);}
         @Override protected void render(){
-            header("ShareBox AI");frame.header.addView(tag("AI",R.color.sb_accent));
-            note(frame.above,"Trợ lý tự động · luôn sẵn sàng. Muốn thương lượng, hãy dùng Chat với chủ đồ.",R.color.sb_accent);
+            header("ShareBox AI");
+            TextView introduction=meta("Trợ lý tự động · luôn sẵn sàng. Muốn thương lượng, hãy dùng Chat với chủ đồ.");
+            introduction.setPadding(dp(16),dp(6),dp(16),dp(6));
+            add(frame.above,introduction,4);
             chips(frame.footer,new String[]{"Thuê theo ngày hay theo tuần?","Mượn đồ hoạt động thế nào?","Tiền cọc là gì?","Gợi ý theo ngân sách"},-1,
                     i->vm.ask(new String[]{"Thuê theo ngày hay theo tuần?","Mượn đồ hoạt động thế nào?","Tiền cọc là gì?","Gợi ý theo ngân sách"}[i]));
             compose(frame.footer,true,vm::ask,null,null);
